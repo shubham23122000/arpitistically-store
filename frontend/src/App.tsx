@@ -133,8 +133,7 @@ function App() {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [view, setView] = useState("home");
-  const [selectedProduct, setSelectedProduct] = useState(null);
-
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   useEffect(() => {
     void loadProducts();
   }, []);
