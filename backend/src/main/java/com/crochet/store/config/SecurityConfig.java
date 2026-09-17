@@ -53,7 +53,8 @@ public class SecurityConfig {
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
 		// Replace with your deployed frontend URL once you have it (e.g. Vercel URL)
-		configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
+		configuration.setAllowedOrigins(
+				List.of("http://localhost:5173", "http://localhost:3000", "https://arpitistically-store.vercel.app"));
 		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		configuration.setAllowedHeaders(List.of("*"));
 		configuration.setAllowCredentials(true);
