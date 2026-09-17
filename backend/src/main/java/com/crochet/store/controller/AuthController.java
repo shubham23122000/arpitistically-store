@@ -1,20 +1,25 @@
 package com.crochet.store.controller;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+
 import com.crochet.store.dto.AuthDtos.AuthResponse;
 import com.crochet.store.dto.AuthDtos.LoginRequest;
 import com.crochet.store.dto.AuthDtos.RegisterRequest;
 import com.crochet.store.entity.AppUser;
+import com.crochet.store.entity.AppUser.Role;
 import com.crochet.store.repository.AppUserRepository;
 import com.crochet.store.security.JwtService;
+
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -61,5 +66,16 @@ public class AuthController {
 
         String token = jwtService.generateToken(user.getEmail(), user.getRole().name());
         return new AuthResponse(token, user.getEmail(), user.getFullName(), user.getRole().name());
+    }
+    
+    @GetMapping("/make-admin")
+    public String makeAdmin(@RequestParam String email) {
+        AppUser user = appUserRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setRole(Role.ADMIN); // adjust if your field is different
+        appUserRepository.save(user);
+
+        return "User is now ADMIN";
     }
 }
