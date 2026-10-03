@@ -57,6 +57,20 @@ public class OrderExpiryService {
 		return order;
 	}
 
+	// Admin cancelling an already-paid order (e.g. a refund) — items go back into stock
+	// the same way an expired/abandoned order does.
+	@Transactional
+	public Order cancelPaidOrder(Long orderId) {
+		Order order = orderRepository.findById(orderId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+
+		if (order.getStatus() == Order.OrderStatus.PAID) {
+			releaseStockAndCancel(order);
+		}
+
+		return order;
+	}
+
 	private void releaseStockAndCancel(Order order) {
 		for (OrderItem item : order.getItems()) {
 			Product product = item.getProduct();

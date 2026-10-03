@@ -9,7 +9,13 @@ export default function ProductDetail({ product, addToCart }: any) {
         <div className="product-detail">
 
             <div className="detail-images">
-                <img src={selectedImage} className="detail-main-img" />
+                {selectedImage ? (
+                    <img src={selectedImage} className="detail-main-img" />
+                ) : (
+                    <div className="detail-main-img detail-image-placeholder">
+                        <span>🧶</span>
+                    </div>
+                )}
 
                 <div className="thumbnail-row">
                     {product.imageUrls?.map((img: string, i: number) => (

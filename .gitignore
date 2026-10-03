@@ -1,0 +1,15 @@
+# Java / Eclipse
+backend/target/
+backend/.classpath
+backend/.project
+backend/.settings/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.*
+
+# OS / editor
+.DS_Store
+.vscode/cl

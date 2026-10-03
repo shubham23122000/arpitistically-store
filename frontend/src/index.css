@@ -1012,6 +1012,14 @@ footer {
   border-radius: 12px;
 }
 
+.detail-image-placeholder {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  background: #f6e9e4;
+  font-size: 5rem;
+}
+
 .active-thumb {
   border: 2px solid #a2678a;
 }

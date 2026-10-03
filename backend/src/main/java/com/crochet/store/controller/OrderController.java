@@ -107,6 +107,27 @@ public class OrderController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(response);
 	}
 
+	// Customer backing out of the Razorpay popup before paying — releases the
+	// reserved stock immediately instead of waiting for the 15-minute auto-expiry.
+	@PostMapping("/{id}/cancel")
+	@Transactional
+	public OrderResponse cancelOwnOrder(@PathVariable Long id, Authentication auth) {
+		AppUser user = currentUser(auth);
+
+		Order order = orderRepository.findById(id)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+
+		if (!order.getUser().getId().equals(user.getId())) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This is not your order");
+		}
+
+		if (order.getStatus() != Order.OrderStatus.PENDING) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "Only pending orders can be cancelled");
+		}
+
+		return toResponse(orderExpiryService.cancelPendingOrder(id));
+	}
+
 	@PostMapping("/{id}/verify-payment")
 	@Transactional
 	public OrderResponse verifyPayment(@PathVariable Long id, @Valid @RequestBody PaymentVerificationRequest request,
@@ -164,6 +185,18 @@ public class OrderController {
 				.collect(Collectors.toList());
 	}
 
+	// Which status an order is allowed to move to from its current status.
+	// Keeps admins from accidentally skipping steps (e.g. PENDING -> DELIVERED)
+	// or moving an order backward.
+	private static final java.util.Map<Order.OrderStatus, java.util.Set<Order.OrderStatus>> ALLOWED_TRANSITIONS = java.util.Map
+			.of(Order.OrderStatus.PENDING,
+					java.util.Set.of(Order.OrderStatus.PAID, Order.OrderStatus.CANCELLED),
+					Order.OrderStatus.PAID,
+					java.util.Set.of(Order.OrderStatus.SHIPPED, Order.OrderStatus.CANCELLED),
+					Order.OrderStatus.SHIPPED, java.util.Set.of(Order.OrderStatus.DELIVERED),
+					Order.OrderStatus.DELIVERED, java.util.Set.of(),
+					Order.OrderStatus.CANCELLED, java.util.Set.of());
+
 	@PatchMapping("/admin/{id}/status")
 	public OrderResponse updateStatus(@PathVariable Long id, @Valid @RequestBody OrderStatusUpdateRequest request) {
 
@@ -177,8 +210,25 @@ public class OrderController {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status: " + request.getStatus());
 		}
 
-		if (newStatus == Order.OrderStatus.CANCELLED && order.getStatus() == Order.OrderStatus.PENDING) {
-			return toResponse(orderExpiryService.cancelPendingOrder(id));
+		Order.OrderStatus currentStatus = order.getStatus();
+
+		if (newStatus == currentStatus) {
+			return toResponse(order);
+		}
+
+		if (!ALLOWED_TRANSITIONS.getOrDefault(currentStatus, java.util.Set.of()).contains(newStatus)) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"Cannot change an order from " + currentStatus + " to " + newStatus);
+		}
+
+		if (newStatus == Order.OrderStatus.CANCELLED) {
+			if (currentStatus == Order.OrderStatus.PENDING) {
+				return toResponse(orderExpiryService.cancelPendingOrder(id));
+			}
+			if (currentStatus == Order.OrderStatus.PAID) {
+				// Refund/cancellation after payment — release the reserved stock back.
+				return toResponse(orderExpiryService.cancelPaidOrder(id));
+			}
 		}
 
 		order.setStatus(newStatus);

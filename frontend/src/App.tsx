@@ -4,9 +4,10 @@ import MyOrders from "./MyOrders";
 import ProductCard from "./ProductCard";
 import ProductDetail from "./ProductDetail";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE;
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE ?? "https://arpitistically-store.onrender.com/api"
+).replace(/\/+$/, "");
 const SESSION_STORAGE_KEY = "crochet-store-session";
-console.log(API_BASE_URL);
 
 type Product = {
   id: number;
@@ -63,6 +64,9 @@ type RazorpayOptions = {
     color: string;
   };
   handler: (response: RazorpaySuccessResponse) => void;
+  modal?: {
+    ondismiss?: () => void;
+  };
 };
 
 type RazorpayInstance = {
@@ -255,6 +259,24 @@ function App() {
     }
   }
 
+  async function cancelAbandonedOrder(orderId: number) {
+    if (!session) return;
+
+    try {
+      await fetch(`${API_BASE_URL}/orders/${orderId}/cancel`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+        },
+      });
+      // Stock was reserved during checkout — refresh so the storefront
+      // reflects it being available again right away.
+      await loadProducts();
+    } catch {
+      // Best-effort — if this fails, the 15-minute expiry job cleans it up anyway.
+    }
+  }
+
   async function verifyPayment(
     checkout: CheckoutResponse,
     payment: RazorpaySuccessResponse,
@@ -367,6 +389,14 @@ function App() {
         },
         handler: (payment) => {
           void verifyPayment(checkout, payment);
+        },
+        modal: {
+          ondismiss: () => {
+            void cancelAbandonedOrder(checkout.order.id);
+            setCheckoutError(
+              "Checkout cancelled. Your items are still in your cart if you'd like to try again.",
+            );
+          },
         },
       });
 
