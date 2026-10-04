@@ -8,6 +8,7 @@ const API_BASE_URL = (
   import.meta.env.VITE_API_BASE ?? "https://arpitistically-store.onrender.com/api"
 ).replace(/\/+$/, "");
 const SESSION_STORAGE_KEY = "crochet-store-session";
+const UPI_ID = "992068902@ptsbi";
 
 type Product = {
   id: number;
@@ -33,53 +34,6 @@ type Session = {
 
 type AuthMode = "login" | "register";
 
-type CheckoutResponse = {
-  order: {
-    id: number;
-  };
-  razorpayOrderId: string;
-  razorpayKeyId: string;
-  amountInPaise: number;
-  currency: string;
-};
-
-type RazorpaySuccessResponse = {
-  razorpay_payment_id: string;
-  razorpay_order_id: string;
-  razorpay_signature: string;
-};
-
-type RazorpayOptions = {
-  key: string;
-  amount: number;
-  currency: string;
-  name: string;
-  description: string;
-  order_id: string;
-  prefill: {
-    name: string;
-    email: string;
-  };
-  theme: {
-    color: string;
-  };
-  handler: (response: RazorpaySuccessResponse) => void;
-  modal?: {
-    ondismiss?: () => void;
-  };
-};
-
-type RazorpayInstance = {
-  open: () => void;
-  on: (event: string, callback: () => void) => void;
-};
-
-declare global {
-  interface Window {
-    Razorpay?: new (options: RazorpayOptions) => RazorpayInstance;
-  }
-}
-
 const formatPrice = (price: number) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -93,31 +47,6 @@ function getSavedSession(): Session | null {
   } catch {
     return null;
   }
-}
-
-function loadRazorpayScript(): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (window.Razorpay) {
-      resolve(true);
-      return;
-    }
-
-    const existingScript = document.getElementById("razorpay-checkout-script");
-
-    if (existingScript) {
-      existingScript.addEventListener("load", () => resolve(true));
-      existingScript.addEventListener("error", () => resolve(false));
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.id = "razorpay-checkout-script";
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-
-    document.body.appendChild(script);
-  });
 }
 
 function App() {
@@ -259,68 +188,6 @@ function App() {
     }
   }
 
-  async function cancelAbandonedOrder(orderId: number) {
-    if (!session) return;
-
-    try {
-      await fetch(`${API_BASE_URL}/orders/${orderId}/cancel`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session.token}`,
-        },
-      });
-      // Stock was reserved during checkout — refresh so the storefront
-      // reflects it being available again right away.
-      await loadProducts();
-    } catch {
-      // Best-effort — if this fails, the 15-minute expiry job cleans it up anyway.
-    }
-  }
-
-  async function verifyPayment(
-    checkout: CheckoutResponse,
-    payment: RazorpaySuccessResponse,
-  ) {
-    if (!session) return;
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/orders/${checkout.order.id}/verify-payment`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.token}`,
-          },
-          body: JSON.stringify({
-            razorpayPaymentId: payment.razorpay_payment_id,
-            razorpayOrderId: payment.razorpay_order_id,
-            razorpaySignature: payment.razorpay_signature,
-          }),
-        },
-      );
-
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        throw new Error(data?.message || "Could not verify the payment.");
-      }
-
-      setCart([]);
-      setShippingAddress("");
-      setCheckoutError("");
-      await loadProducts();
-
-      alert("Payment successful! Your order has been placed.");
-    } catch (verificationError) {
-      setCheckoutError(
-        verificationError instanceof Error
-          ? verificationError.message
-          : "Payment completed, but verification failed. Please contact support.",
-      );
-    }
-  }
-
   async function startCheckout() {
     if (!session) {
       openAuth("login");
@@ -341,7 +208,7 @@ function App() {
     setIsCheckingOut(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/orders/checkout`, {
+      const response = await fetch(`${API_BASE_URL}/orders/manual-upi-checkout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -362,56 +229,17 @@ function App() {
         throw new Error(data?.message || "Could not create your order.");
       }
 
-      const checkout = data as CheckoutResponse;
-      const scriptLoaded = await loadRazorpayScript();
-
-      if (!scriptLoaded || !window.Razorpay) {
-        throw new Error(
-          "Could not load Razorpay Checkout. Please check your internet connection.",
-        );
-      }
-
-      const Razorpay = window.Razorpay;
-
-      const razorpay = new Razorpay({
-        key: checkout.razorpayKeyId,
-        amount: checkout.amountInPaise,
-        currency: checkout.currency,
-        name: "Arpitistically",
-        description: "Handmade crochet order",
-        order_id: checkout.razorpayOrderId,
-        prefill: {
-          name: session.fullName,
-          email: session.email,
-        },
-        theme: {
-          color: "#58354d",
-        },
-        handler: (payment) => {
-          void verifyPayment(checkout, payment);
-        },
-        modal: {
-          ondismiss: () => {
-            void cancelAbandonedOrder(checkout.order.id);
-            setCheckoutError(
-              "Checkout cancelled. Your items are still in your cart if you'd like to try again.",
-            );
-          },
-        },
-      });
-
-      razorpay.on("payment.failed", () => {
-        setCheckoutError(
-          "Payment failed or was cancelled. Please try again with another method.",
-        );
-      });
-
-      razorpay.open();
+      setCart([]);
+      setShippingAddress("");
+      alert(
+        `Order #${data.id} created. Scan the QR, pay the exact amount, then submit your UTR in My Orders.`,
+      );
+      setView("orders");
     } catch (checkoutException) {
       setCheckoutError(
         checkoutException instanceof Error
           ? checkoutException.message
-          : "Could not start checkout.",
+          : "Could not create your order.",
       );
     } finally {
       setIsCheckingOut(false);
@@ -588,6 +416,24 @@ function App() {
                     rows={3}
                   />
                 </label>
+                <div className="upi-payment-box">
+                  <p className="eyebrow">Direct UPI payment</p>
+                  <h3>Scan and pay after creating the order</h3>
+
+                  <img
+                    className="upi-qr"
+                    src="/upi-qr.png"
+                    alt="Arpitistically UPI payment QR code"
+                  />
+
+                  <p>
+                    UPI ID: <strong>{UPI_ID}</strong>
+                  </p>
+
+                  <p className="upi-note">
+                    After payment, open My Orders and submit your UTR / transaction ID.
+                  </p>
+                </div>
 
                 {checkoutError && (
                   <p className="checkout-error">{checkoutError}</p>
@@ -603,7 +449,7 @@ function App() {
                   disabled={isCheckingOut}
                   onClick={() => void startCheckout()}
                 >
-                  {isCheckingOut ? "Opening payment…" : "Pay securely"}
+                  {isCheckingOut ? "Creating order…" : "Continue to UPI payment"}
                 </button>
               </>
             )}

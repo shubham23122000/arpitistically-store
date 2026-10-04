@@ -11,68 +11,124 @@ import java.util.List;
 @Table(name = "orders")
 public class Order {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "user_id")
-    private AppUser user;
+	@ManyToOne(optional = false)
+	@JoinColumn(name = "user_id")
+	private AppUser user;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<OrderItem> items = new ArrayList<>();
+	@OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<OrderItem> items = new ArrayList<>();
 
-    @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal totalAmount;
+	@Column(nullable = false, precision = 10, scale = 2)
+	private BigDecimal totalAmount;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private OrderStatus status = OrderStatus.PENDING;
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false)
+	private OrderStatus status = OrderStatus.PENDING;
 
-    // Razorpay identifiers, filled in after checkout / payment verification
-    private String razorpayOrderId;
-    private String razorpayPaymentId;
+	// Manual UPI payment details. Never treat these as proof of payment
+	// automatically.
+	private String paymentReference;
+	private String paymentProofPublicId;
+	private Instant paymentSubmittedAt;
 
-    @Column(nullable = false, updatable = false)
-    private Instant createdAt = Instant.now();
-    
-    private Instant paymentExpiresAt;
+	@Column(nullable = false, updatable = false)
+	private Instant createdAt = Instant.now();
 
-    private String shippingAddress;
+	private Instant paymentExpiresAt;
+	private String shippingAddress;
 
-    public enum OrderStatus {
-        PENDING, PAID, SHIPPED, DELIVERED, CANCELLED
-    }
+	public enum OrderStatus {
+		PENDING, PAYMENT_SUBMITTED, PAID, SHIPPED, DELIVERED, CANCELLED
+	}
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+	public Long getId() {
+		return id;
+	}
 
-    public AppUser getUser() { return user; }
-    public void setUser(AppUser user) { this.user = user; }
+	public void setId(Long id) {
+		this.id = id;
+	}
 
-    public List<OrderItem> getItems() { return items; }
-    public void setItems(List<OrderItem> items) { this.items = items; }
+	public AppUser getUser() {
+		return user;
+	}
 
-    public BigDecimal getTotalAmount() { return totalAmount; }
-    public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+	public void setUser(AppUser user) {
+		this.user = user;
+	}
 
-    public OrderStatus getStatus() { return status; }
-    public void setStatus(OrderStatus status) { this.status = status; }
+	public List<OrderItem> getItems() {
+		return items;
+	}
 
-    public String getRazorpayOrderId() { return razorpayOrderId; }
-    public void setRazorpayOrderId(String razorpayOrderId) { this.razorpayOrderId = razorpayOrderId; }
+	public void setItems(List<OrderItem> items) {
+		this.items = items;
+	}
 
-    public String getRazorpayPaymentId() { return razorpayPaymentId; }
-    public void setRazorpayPaymentId(String razorpayPaymentId) { this.razorpayPaymentId = razorpayPaymentId; }
+	public BigDecimal getTotalAmount() {
+		return totalAmount;
+	}
 
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+	public void setTotalAmount(BigDecimal totalAmount) {
+		this.totalAmount = totalAmount;
+	}
 
-    public String getShippingAddress() { return shippingAddress; }
-    public void setShippingAddress(String shippingAddress) { this.shippingAddress = shippingAddress; }
+	public OrderStatus getStatus() {
+		return status;
+	}
+
+	public void setStatus(OrderStatus status) {
+		this.status = status;
+	}
+
+	public String getPaymentReference() {
+		return paymentReference;
+	}
+
+	public void setPaymentReference(String paymentReference) {
+		this.paymentReference = paymentReference;
+	}
+
+	public String getPaymentProofPublicId() {
+		return paymentProofPublicId;
+	}
+
+	public void setPaymentProofPublicId(String paymentProofPublicId) {
+		this.paymentProofPublicId = paymentProofPublicId;
+	}
+
+	public Instant getPaymentSubmittedAt() {
+		return paymentSubmittedAt;
+	}
+
+	public void setPaymentSubmittedAt(Instant paymentSubmittedAt) {
+		this.paymentSubmittedAt = paymentSubmittedAt;
+	}
+
+	public Instant getCreatedAt() {
+		return createdAt;
+	}
+
+	public void setCreatedAt(Instant createdAt) {
+		this.createdAt = createdAt;
+	}
+
+	public String getShippingAddress() {
+		return shippingAddress;
+	}
+
+	public void setShippingAddress(String shippingAddress) {
+		this.shippingAddress = shippingAddress;
+	}
+
 	public Instant getPaymentExpiresAt() {
 		return paymentExpiresAt;
 	}
+
 	public void setPaymentExpiresAt(Instant paymentExpiresAt) {
 		this.paymentExpiresAt = paymentExpiresAt;
 	}

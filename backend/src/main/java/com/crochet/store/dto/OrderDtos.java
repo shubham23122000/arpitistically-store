@@ -101,15 +101,22 @@ public class OrderDtos {
 		private String shippingAddress;
 		private Instant createdAt;
 		private List<OrderItemResponse> items;
+		private String paymentReference;
+		private Instant paymentSubmittedAt;
+		private String paymentProofUrl;
 
 		public OrderResponse(Long id, String status, BigDecimal totalAmount, String shippingAddress, Instant createdAt,
-				List<OrderItemResponse> items) {
+				List<OrderItemResponse> items, String paymentReference, Instant paymentSubmittedAt,
+				String paymentProofUrl) {
 			this.id = id;
 			this.status = status;
 			this.totalAmount = totalAmount;
 			this.shippingAddress = shippingAddress;
 			this.createdAt = createdAt;
 			this.items = items;
+			this.paymentReference = paymentReference;
+			this.paymentSubmittedAt = paymentSubmittedAt;
+			this.paymentProofUrl = paymentProofUrl;
 		}
 
 		public Long getId() {
@@ -135,77 +142,17 @@ public class OrderDtos {
 		public List<OrderItemResponse> getItems() {
 			return items;
 		}
-	}
 
-	public static class CheckoutResponse {
-		private final OrderResponse order;
-		private final String razorpayOrderId;
-		private final String razorpayKeyId;
-		private final long amountInPaise;
-		private final String currency;
-
-		public CheckoutResponse(OrderResponse order, String razorpayOrderId, String razorpayKeyId, long amountInPaise,
-				String currency) {
-			this.order = order;
-			this.razorpayOrderId = razorpayOrderId;
-			this.razorpayKeyId = razorpayKeyId;
-			this.amountInPaise = amountInPaise;
-			this.currency = currency;
+		public String getPaymentReference() {
+			return paymentReference;
 		}
 
-		public OrderResponse getOrder() {
-			return order;
+		public Instant getPaymentSubmittedAt() {
+			return paymentSubmittedAt;
 		}
 
-		public String getRazorpayOrderId() {
-			return razorpayOrderId;
-		}
-
-		public String getRazorpayKeyId() {
-			return razorpayKeyId;
-		}
-
-		public long getAmountInPaise() {
-			return amountInPaise;
-		}
-
-		public String getCurrency() {
-			return currency;
-		}
-	}
-
-	public static class PaymentVerificationRequest {
-		@NotBlank
-		private String razorpayPaymentId;
-
-		@NotBlank
-		private String razorpayOrderId;
-
-		@NotBlank
-		private String razorpaySignature;
-
-		public String getRazorpayPaymentId() {
-			return razorpayPaymentId;
-		}
-
-		public void setRazorpayPaymentId(String razorpayPaymentId) {
-			this.razorpayPaymentId = razorpayPaymentId;
-		}
-
-		public String getRazorpayOrderId() {
-			return razorpayOrderId;
-		}
-
-		public void setRazorpayOrderId(String razorpayOrderId) {
-			this.razorpayOrderId = razorpayOrderId;
-		}
-
-		public String getRazorpaySignature() {
-			return razorpaySignature;
-		}
-
-		public void setRazorpaySignature(String razorpaySignature) {
-			this.razorpaySignature = razorpaySignature;
+		public String getPaymentProofUrl() {
+			return paymentProofUrl;
 		}
 	}
 }
